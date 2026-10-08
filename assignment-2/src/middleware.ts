@@ -70,14 +70,37 @@ export const validatePaperInput = (paper: PaperBody): string[] => {
   const errors: string[] = [];
 
   // TODO: validate paper.title
+  // (guard against a missing request body)
+  const body = (paper ?? {}) as PaperBody;
+  if (typeof body.title !== "string" || body.title.trim() === "") {
+    errors.push("Title is required");
+  }
 
   // TODO: validate paper.publishedIn
+  if (typeof body.publishedIn !== "string" || body.publishedIn.trim() === "") {
+    errors.push("Published venue is required");
+  }
 
   // TODO: validate paper.year
+  if (body.year === undefined || body.year === null) {
+    errors.push("Published year is required");
+  } else if (!Number.isInteger(body.year) || body.year <= 1900) {
+    errors.push("Valid year after 1900 is required");
+  }
 
   // TODO: validate paper.authors exists and is a non-empty array
-
-  // TODO: validate each author has a valid name
+  if (!Array.isArray(body.authors) || body.authors.length === 0) {
+    errors.push("At least one author is required");
+  } else {
+    // TODO: validate each author has a valid name
+    // ("Author name is required" is added only once)
+    const hasInvalidName = body.authors.some(
+      (a) => !a || typeof a.name !== "string" || a.name.trim() === "",
+    );
+    if (hasInvalidName) {
+      errors.push("Author name is required");
+    }
+  }
 
   return errors;
 };
@@ -99,6 +122,10 @@ export const validateAuthorInput = (author: AuthorBody): string[] => {
   const errors: string[] = [];
 
   // TODO: validate author.name
+  const name = author?.name;
+  if (typeof name !== "string" || name.trim() === "") {
+    errors.push("Name is required");
+  }
 
   return errors;
 };
@@ -123,12 +150,22 @@ export const validateResourceId = (
   next: NextFunction,
 ) => {
   // TODO: read the raw id from req.params.id as a string
+  const rawId = String(req.params.id);
   // TODO: validate it is a positive integer
+  const isValid = /^\d+$/.test(rawId) && Number(rawId) > 0;
   // TODO: if invalid, return res.status(400).json({ error: ..., message: ... })
+  if (!isValid) {
+    return res.status(400).json({
+      error: "Validation Error",
+      message: "Invalid ID format",
+    });
+  }
 
   // TODO: convert to number
+  const id = Number(rawId);
 
   // TODO: store validated id into res.locals.id (use type ValidatedLocals)
+  (res.locals as ValidatedLocals).id = id;
 
   // TODO: next();
   next();
@@ -191,14 +228,43 @@ export const validatePaperQueryParams = (
   const parsed: ValidatedPaperQuery = {};
 
   // TODO: validate year (if provided)
+  const isDigits = (v: unknown): v is string =>
+    typeof v === "string" && /^\d+$/.test(v);
+  const sendInvalid = () =>
+    res.status(400).json({
+      error: "Validation Error",
+      message: "Invalid query parameter format",
+    });
+  const { year, publishedIn, limit, offset } = req.query;
+
+  if (year !== undefined) {
+    if (!isDigits(year) || Number(year) <= 1900) return sendInvalid();
+    parsed.year = Number(year);
+  }
 
   // TODO: process publishedIn (if provided)
+  // (kept exactly as provided, no trimming)
+  if (publishedIn !== undefined) {
+    if (typeof publishedIn !== "string") return sendInvalid();
+    parsed.publishedIn = publishedIn;
+  }
 
   // TODO: validate limit (if provided)
+  if (limit !== undefined) {
+    if (!isDigits(limit) || Number(limit) < 1 || Number(limit) > 100) {
+      return sendInvalid();
+    }
+    parsed.limit = Number(limit);
+  }
 
   // TODO: validate offset (if provided)
+  if (offset !== undefined) {
+    if (!isDigits(offset)) return sendInvalid();
+    parsed.offset = Number(offset);
+  }
 
   // TODO: store parsed into res.locals.paperQuery
+  (res.locals as ValidatedLocals).paperQuery = parsed;
 
   next();
 };
@@ -230,14 +296,42 @@ export const validateAuthorQueryParams = (
   const parsed: ValidatedAuthorQuery = {};
 
   // TODO: process name (if provided)
+  const isDigits = (v: unknown): v is string =>
+    typeof v === "string" && /^\d+$/.test(v);
+  const sendInvalid = () =>
+    res.status(400).json({
+      error: "Validation Error",
+      message: "Invalid query parameter format",
+    });
+  const { name, affiliation, limit, offset } = req.query;
+
+  if (name !== undefined) {
+    if (typeof name !== "string") return sendInvalid();
+    parsed.name = name;
+  }
 
   // TODO: process affiliation (if provided)
+  if (affiliation !== undefined) {
+    if (typeof affiliation !== "string") return sendInvalid();
+    parsed.affiliation = affiliation;
+  }
 
   // TODO: validate limit (if provided)
+  if (limit !== undefined) {
+    if (!isDigits(limit) || Number(limit) < 1 || Number(limit) > 100) {
+      return sendInvalid();
+    }
+    parsed.limit = Number(limit);
+  }
 
   // TODO: validate offset (if provided)
+  if (offset !== undefined) {
+    if (!isDigits(offset)) return sendInvalid();
+    parsed.offset = Number(offset);
+  }
 
   // TODO: store parsed into res.locals.authorQuery
+  (res.locals as ValidatedLocals).authorQuery = parsed;
 
   next();
 };

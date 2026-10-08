@@ -19,6 +19,10 @@ export type AuthorBody = {
  */
 export type PaperBody = {
   // TODO
+  title?: string;
+  publishedIn?: string;
+  year?: number;
+  authors?: AuthorBody[];
 };
 
 /**
@@ -31,6 +35,9 @@ export type PaperBody = {
  */
 export type AuthorCreateData = {
   // TODO
+  name: string;
+  email?: string | null;
+  affiliation?: string | null;
 };
 
 /**
@@ -43,6 +50,10 @@ export type AuthorCreateData = {
  */
 export type PaperCreateData = {
   // TODO
+  title: string;
+  publishedIn: string;
+  year: number;
+  authors: AuthorCreateData[];
 };
 
 /**

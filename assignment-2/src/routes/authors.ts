@@ -33,12 +33,16 @@ function isErrorWithMessage(e: unknown): e is { message: string } {
 router.get(
   "/",
   // TODO: attach validateAuthorQueryParams middleware
+  middleware.validateAuthorQueryParams,
   async (req, res) => {
     // TODO: read validated query params from res.locals
     // const { authorQuery } = res.locals as ValidatedLocals;
+    const { authorQuery } = res.locals as ValidatedLocals;
     // TODO: call db.getAllAuthors with the validated query object
     //       Use an empty object if authorQuery is undefined.
+    const result = await db.getAllAuthors(authorQuery ?? {});
     // TODO: return the result as JSON
+    return res.json(result);
   },
 );
 
@@ -57,11 +61,18 @@ router.get(
 router.get(
   "/:id",
   // TODO: attach validateResourceId middleware
+  middleware.validateResourceId,
   async (req, res) => {
     // TODO: extract the validated id using middleware.requireId
+    const id = middleware.requireId(res);
     // TODO: await db.getAuthorById
+    const author = await db.getAuthorById(id);
     // TODO: if not found, return res.status(404).json({ error: "Author not found" });
+    if (!author) {
+      return res.status(404).json({ error: "Author not found" });
+    }
     // TODO: res.json(author);
+    return res.json(author);
   },
 );
 
@@ -79,9 +90,15 @@ router.get(
  */
 router.post("/", async (req, res) => {
   // TODO: validate input using middleware.validateAuthorInput(req.body)
+  const errors = middleware.validateAuthorInput(req.body);
   // TODO: if errors exist, return 400 Validation Error
+  if (errors.length > 0) {
+    return res.status(400).json({ error: "Validation Error", messages: errors });
+  }
   // TODO: await db.createAuthor
+  const author = await db.createAuthor(req.body);
   // TODO: return 201 with created author
+  return res.status(201).json(author);
 });
 
 // -----------------------
@@ -101,12 +118,25 @@ router.post("/", async (req, res) => {
 router.put(
   "/:id",
   // TODO: attach validateResourceId middleware
+  middleware.validateResourceId,
   async (req, res) => {
     // TODO: validate input
+    const errors = middleware.validateAuthorInput(req.body);
+    if (errors.length > 0) {
+      return res
+        .status(400)
+        .json({ error: "Validation Error", messages: errors });
+    }
     // TODO: get authorId with middleware.requireId
+    const authorId = middleware.requireId(res);
     // TODO: const updated = await db.updateAuthor
+    const updated = await db.updateAuthor(authorId, req.body);
     // TODO: if updated is null, return 404
+    if (!updated) {
+      return res.status(404).json({ error: "Author not found" });
+    }
     // TODO: return updated author
+    return res.json(updated);
   },
 );
 
@@ -127,19 +157,35 @@ router.put(
 router.delete(
   "/:id",
   // TODO: attach validateResourceId middleware
+  middleware.validateResourceId,
   async (req, res) => {
     // TODO: const authorId = middleware.requireId(res);
+    const authorId = middleware.requireId(res);
 
     // TODO: check author existence via db.getAuthorById
     //       if not found, return 404
+    const author = await db.getAuthorById(authorId);
+    if (!author) {
+      return res.status(404).json({ error: "Author not found" });
+    }
 
     try {
       // TODO: await db.deleteAuthor
+      await db.deleteAuthor(authorId);
       // TODO: return 204 No Content
+      return res.status(204).send();
     } catch (e: unknown) {
       // TODO: detect "only author" constraint error
       // Hint: use isErrorWithMessage(e) and check e.message
       // If matched, return 400 with a Constraint Error
+      const constraintMessage =
+        "Cannot delete author: they are the only author of one or more papers";
+      if (isErrorWithMessage(e) && e.message === constraintMessage) {
+        return res.status(400).json({
+          error: "Constraint Error",
+          message: constraintMessage,
+        });
+      }
       throw e;
     }
   },
