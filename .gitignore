@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Environment variables (contain database credentials)
+.env
+.env.*
+
+# Prisma generated client (recreated by `npx prisma generate`)
+generated/
+
+# Build output
+dist/
+build/
+
+# Test coverage
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Submission archives
+*.tar.gz
